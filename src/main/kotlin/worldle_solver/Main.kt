@@ -3,20 +3,48 @@ package worldle_solver
 fun main() {
     val words = GetResource.getIt("words.txt").map(String::toList)
 
-    val mutableColl = mutableListOf<Pair<String, Double>>()
+    var knowledge: Knowledge = emptyMap()
+    var guess = "raise".toList()
+    var count = 1
+    val guesses = mutableListOf<List<Char>>()
 
-    words.forEachIndexed { index, word ->
-        val assessment = assessGuess(word, emptyMap(), words)
-        println("(${index}/${words.size}) ${word.joinToString("")}: $assessment")
-        mutableColl.add(Pair(word.joinToString(""), assessment))
-    }
+    while (true) {
+        println()
+        println("Guess $count: ${guess.joinToString("")}")
+        println()
 
-    println("-----------------------")
+        var input: String?
+        var inputIsOk: Boolean
+        do {
+            println("Enter validations. [c]orrect, [p]resent, [a]bsent, e.g. \"aapac\"")
+            input = readLine()
+            inputIsOk = (input != null && input.length == 5 && (input.toSet() - 'a' - 'p' - 'c').isEmpty())
+        } while (!inputIsOk)
 
-    val coll = mutableColl.toList()
+        val validations = input!!.toList().map {
+            when (it) {
+                'a' -> Validation.ABSENT
+                'p' -> Validation.PRESENT
+                'c' -> Validation.CORRECT
+                else -> throw RuntimeException("wtf")
+            }
+        }
 
-    coll.sortedBy { it.second }.take(10).forEach { (word, assessment) ->
-        println("$word: $assessment")
+        guesses.add(guess)
+        count += 1
+        knowledge = knowledge.addNewInfo(guess, validations)
+
+        val potential = words.filter { it.isCompatibleWith(knowledge) } - guesses.toSet()
+
+        val assessedGuesses =
+            potential.map { word -> Pair(word, assessGuess(word, knowledge, potential)) }.sortedBy { it.second }
+
+        println()
+        println("Top choices:")
+        assessedGuesses.take(10).forEach { (word, score) ->
+            println("${word.joinToString("")} - ${score}")
+        }
+
+        guess = assessedGuesses.first().first
     }
 }
-
